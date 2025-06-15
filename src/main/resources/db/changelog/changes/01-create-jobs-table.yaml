@@ -1,0 +1,39 @@
+databaseChangeLog:
+  - changeSet:
+      id: create-jobs-table
+      author: brkalix
+      changes:
+        - createTable:
+            tableName: jobs
+            columns:
+              - column:
+                  name: id
+                  type: bigint
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: job_page_url
+                  type: text
+              - column:
+                  name: position_name
+                  type: varchar(500)
+              - column:
+                  name: organization_url
+                  type: text
+              - column:
+                  name: logo_url
+                  type: text
+              - column:
+                  name: organization_title
+                  type: varchar(500)
+              - column:
+                  name: labor_function
+                  type: varchar(500)
+              - column:
+                  name: posted_date_unix
+                  type: bigint
+              - column:
+                  name: description_html
+                  type: text
