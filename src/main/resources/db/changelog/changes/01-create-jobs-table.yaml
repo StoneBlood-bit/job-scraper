@@ -18,7 +18,7 @@ databaseChangeLog:
                   type: text
               - column:
                   name: position_name
-                  type: varchar(500)
+                  type: text
               - column:
                   name: organization_url
                   type: text
@@ -27,10 +27,10 @@ databaseChangeLog:
                   type: text
               - column:
                   name: organization_title
-                  type: varchar(500)
+                  type: text
               - column:
                   name: labor_function
-                  type: varchar(500)
+                  type: text
               - column:
                   name: posted_date_unix
                   type: bigint

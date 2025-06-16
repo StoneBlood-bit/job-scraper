@@ -23,4 +23,12 @@ public class Location {
     @ManyToOne
     @JoinColumn(name = "job_id")
     private Job job;
+
+    public Location(String name, Job job) {
+        this.name = name;
+        this.job = job;
+    }
+
+    public Location() {
+    }
 }

@@ -24,4 +24,11 @@ public class Tag {
 
     @ManyToMany(mappedBy = "tags")
     private List<Job> jobs = new ArrayList<>();
+
+    public Tag(String name) {
+        this.name = name;
+    }
+
+    public Tag() {
+    }
 }

@@ -1,0 +1,17 @@
+databaseChangeLog:
+  - changeSet:
+      id: alter-jobs-varchar-to-text
+      author: brkalix
+      changes:
+        - modifyDataType:
+            tableName: jobs
+            columnName: position_name
+            newDataType: text
+        - modifyDataType:
+            tableName: jobs
+            columnName: organization_title
+            newDataType: text
+        - modifyDataType:
+            tableName: jobs
+            columnName: labor_function
+            newDataType: text
