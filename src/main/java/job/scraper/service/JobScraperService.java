@@ -6,6 +6,8 @@ import job.scraper.model.Tag;
 import job.scraper.model.Location;
 import job.scraper.repository.JobRepository;
 import job.scraper.repository.TagRepository;
+import job.scraper.util.JobScraperLocators;
+import job.scraper.util.JsScripts;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.time.ZoneId;
@@ -27,7 +29,6 @@ import org.openqa.selenium.WebElement;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
-import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -36,6 +37,11 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional
 public class JobScraperService {
     private static final String JOB_TECHSTARS_URL = "https://jobs.techstars.com/jobs";
+    private static final String DOMEN = "jobs.techstars.com";
+    private static final String HREF_ATTRIBUTE = "href";
+    private static final String SRC_ATTRIBUTE ="src";
+    private static final String INNER_HTML_ATTRIBUTE = "innerHTML";
+    private static final String CHROME_DRIVER_PATH = "selenium\\chromedriver.exe";
 
     private final JobRepository jobRepository;
     private final TagRepository tagRepository;
@@ -71,7 +77,7 @@ public class JobScraperService {
     }
 
     private void setupWebDriver() {
-        System.setProperty("webdriver.chrome.driver", "selenium\\chromedriver.exe");
+        System.setProperty("webdriver.chrome.driver", CHROME_DRIVER_PATH);
         driver = new ChromeDriver();
         wait = new WebDriverWait(driver, Duration.ofSeconds(10));
         js = (JavascriptExecutor) driver;
@@ -85,7 +91,7 @@ public class JobScraperService {
     private void closeCookieBanner() {
         try {
             WebElement closeButton = wait.until(ExpectedConditions.elementToBeClickable(
-                    By.cssSelector("button.onetrust-close-btn-handler")
+                    JobScraperLocators.COOKIE_BANNER_CLOSE_BUTTON
             ));
             closeButton.click();
         } catch (TimeoutException e) {
@@ -94,14 +100,18 @@ public class JobScraperService {
     }
 
     private void selectJobFunction(String jobFunction) throws InterruptedException {
-        WebElement jobFunctionDiv = wait.until(ExpectedConditions.elementToBeClickable(By.xpath("//div[text()='Job function']")));
+        WebElement jobFunctionDiv = wait.until(ExpectedConditions.elementToBeClickable(
+                JobScraperLocators.JOB_FUNCTION_DIV_OPEN_BUTTON
+        ));
         jobFunctionDiv.click();
 
         wait.until(ExpectedConditions.elementToBeClickable(
-                By.xpath("//div[@data-testid='filter-results']")
+                JobScraperLocators.FILTER_DIV
         ));
 
-        WebElement scrollContainer = driver.findElement(By.cssSelector("div[data-test-id='virtuoso-scroller']"));
+        WebElement scrollContainer = driver.findElement(
+                JobScraperLocators.SCROLL_CONTAINER
+        );
 
         String encodedText = jobFunction.replace(" ", "%2520");
         By targetLocator = By.cssSelector("div[data-testid='job_functions-" + encodedText + "']");
@@ -112,42 +122,41 @@ public class JobScraperService {
         for (int i = 0; i < maxScrolls; i++) {
             try {
                 WebElement el = driver.findElement(targetLocator);
-                js.executeScript("arguments[0].scrollIntoView(true);", el);
+                js.executeScript(JsScripts.SCRIPT_SCROLL_INTO_VIEW, el);
                 el.click();
                 found = true;
                 break;
             } catch (NoSuchElementException e) {
-                // Скролимо вниз на 300 пікселів контейнер
-                js.executeScript("arguments[0].scrollTop += 300;", scrollContainer);
-                Thread.sleep(500); // чекати оновлення DOM
+                js.executeScript(JsScripts.SCRIPT_SCROLL_TOP, scrollContainer);
+                Thread.sleep(500);
             }
         }
 
         if (!found) {
-            throw new RuntimeException("Елемент '" + jobFunction + "' не знайдено після прокрутки");
+            throw new RuntimeException("Element '" + jobFunction + "' not found after scrolling");
         }
 
-        Thread.sleep(2000); // wait for filtering to apply
+        Thread.sleep(2000);
     }
 
     private void loadAllJobs() throws InterruptedException {
-        WebElement loadMoreDev = driver.findElement(By.xpath("//div[text()='Load more']"));  //підвантажити всі елементи
+        WebElement loadMoreDev = driver.findElement(JobScraperLocators.LOAD_MORE_BUTTON);
 
         if (loadMoreDev.isDisplayed() && loadMoreDev.isEnabled()) {
-            js.executeScript("arguments[0].scrollIntoView(true);", loadMoreDev);
-            js.executeScript("arguments[0].click();", loadMoreDev);
+            js.executeScript(JsScripts.SCRIPT_SCROLL_INTO_VIEW, loadMoreDev);
+            js.executeScript(JsScripts.SCRIPT_CLICK, loadMoreDev);
 
             Thread.sleep(3000);
         }
 
-        WebElement container = driver.findElement(By.cssSelector("div.infinite-scroll-component"));
-        int previousCount = container.findElements(By.cssSelector("div.job-card")).size();
+        WebElement container = driver.findElement(JobScraperLocators.CONTAINER_ITEMS);
+        int previousCount = container.findElements(JobScraperLocators.ITEMS).size();
         int attempts = 0;
 
         while (attempts < 10) {
-            js.executeScript("window.scrollTo(0, document.body.scrollHeight - 700);");
+            js.executeScript(JsScripts.SCRIPT_SCROLL_WINDOW);
             Thread.sleep(1500);
-            int currentCount = container.findElements(By.cssSelector("div.job-card")).size();
+            int currentCount = container.findElements(JobScraperLocators.ITEMS).size();
 
             if (currentCount > previousCount) {
                 previousCount = currentCount;
@@ -160,16 +169,16 @@ public class JobScraperService {
 
     private List<JobData> collectJobCards() {
         List<JobData> data = new ArrayList<>();
-        List<WebElement> jobItems = driver.findElements(By.cssSelector("div.sc-beqWaB.sc-gueYoa.diHipZ.MYFxR"));
+        List<WebElement> jobItems = driver.findElements(JobScraperLocators.JOB_ITEMS);
 
         for (WebElement item : jobItems) {
-            List<WebElement> links = item.findElements(By.cssSelector("a[data-testid='read-more']"));
+            List<WebElement> links = item.findElements(JobScraperLocators.LINK_READ_MORE);
             if (links.isEmpty()) continue;
 
-            String url = links.get(0).getAttribute("href");
-            if (url == null || !url.contains("jobs.techstars.com")) continue;
+            String url = links.get(0).getAttribute(HREF_ATTRIBUTE);
+            if (url == null || !url.contains(DOMEN)) continue;
 
-            List<String> tags = item.findElements(By.cssSelector("div[data-testid='tag']")).stream()
+            List<String> tags = item.findElements(JobScraperLocators.TAG_DIV).stream()
                     .map(WebElement::getText)
                     .map(String::trim)
                     .filter(t -> !t.isEmpty())
@@ -184,33 +193,42 @@ public class JobScraperService {
     private Job scrapeJobDetails(JobData jobData) {
         try {
             driver.get(jobData.getUrl());
-            wait.until(ExpectedConditions.visibilityOfElementLocated(By.xpath("//div[@class='sc-dmqHEX dxKYnR']")));
+            wait.until(ExpectedConditions.visibilityOfElementLocated(
+                    JobScraperLocators.ITEM_DIV_EXPECTED
+            ));
 
             Job job = new Job();
             job.setJobPageUrl(jobData.getUrl());
-            job.setTags(processTags(jobData.getTags()));  // збереження тегів правильно
+            job.setTags(processTags(jobData.getTags()));
 
-            Optional<String> positionName = driver.findElements(By.xpath("//h2[@class='sc-beqWaB jqWDOR']"))
+            Optional<String> positionName = driver.findElements(
+                    JobScraperLocators.POSITION_NAME_DIV
+                    )
                     .stream()
                     .findFirst()
                     .map(WebElement::getText);
             job.setPositionName(positionName.orElse(""));
 
 
-            Optional<String> url = driver.findElements(By.xpath("//a[@data-testid='button']"))
+            Optional<String> url = driver.findElements(
+                    JobScraperLocators.ORGANIZATION_URL_DIV
+                    )
                     .stream()
                     .findFirst()
-                    .map(e -> e.getAttribute("href"))
-                    .filter(u -> u.length() <= 500);
+                    .map(e -> e.getAttribute(HREF_ATTRIBUTE));
             job.setOrganizationUrl(url.orElse(""));
 
-            Optional<String> logoUrl = driver.findElements(By.xpath("//img[@data-testid='image']"))
+            Optional<String> logoUrl = driver.findElements(
+                    JobScraperLocators.LOGO_URL_DIV
+                    )
                     .stream()
                     .findFirst()
-                    .map(e -> e.getAttribute("src"));
+                    .map(e -> e.getAttribute(SRC_ATTRIBUTE));
             job.setLogoUrl(logoUrl.orElse(""));
 
-            Optional<String> organizationTitle = driver.findElements(By.cssSelector("p.sc-beqWaB.bpXRKw"))
+            Optional<String> organizationTitle = driver.findElements(
+                    JobScraperLocators.ORGANIZATION_TITLE_DIV
+                    )
                     .stream()
                     .findFirst()
                     .map(WebElement::getText);
@@ -220,10 +238,12 @@ public class JobScraperService {
             job.setLocations(extractLocations(job));
             job.setPostedDateUnix(extractPostedDateUnix());
 
-            Optional<String> descriptionHtml = driver.findElements(By.cssSelector("div[data-testid='careerPage']"))
+            Optional<String> descriptionHtml = driver.findElements(
+                    JobScraperLocators.DESCRIPTION_DIV
+                    )
                     .stream()
                     .findFirst()
-                    .map(e -> e.getAttribute("innerHTML"));
+                    .map(e -> e.getAttribute(INNER_HTML_ATTRIBUTE));
             job.setDescriptionHtml(descriptionHtml.orElse(""));
 
 
@@ -239,10 +259,8 @@ public class JobScraperService {
         for (String name : tagNames) {
             Optional<Tag> existingTag = tagRepository.findByName(name);
             if (existingTag.isPresent()) {
-                // беремо існуючий managed об'єкт
                 result.add(existingTag.get());
             } else {
-                // створюємо новий тег і зберігаємо його в базу (щоб Hibernate його "прив’язав")
                 Tag newTag = new Tag(name);
                 Tag savedTag = tagRepository.save(newTag);
                 result.add(savedTag);
@@ -252,12 +270,16 @@ public class JobScraperService {
     }
 
     private String extractLaborFunction() {
-        List<WebElement> elements = driver.findElements(By.cssSelector("div.bpXRKw:nth-of-type(1)"));
+        List<WebElement> elements = driver.findElements(
+                JobScraperLocators.LABOR_FUNCTION_DIV
+        );
         return elements.isEmpty() ? "" : elements.get(0).getText().trim();
     }
 
     private List<Location> extractLocations(Job job) {
-        List<WebElement> elements = driver.findElements(By.cssSelector("div.bpXRKw:nth-of-type(2)"));
+        List<WebElement> elements = driver.findElements(
+                JobScraperLocators.LOCATION_DIV
+        );
         if (elements.isEmpty()) return List.of();
 
         String[] parts = elements.get(0).getText().trim().split(",\\s*");
@@ -267,7 +289,9 @@ public class JobScraperService {
     }
 
     private long extractPostedDateUnix() {
-        String raw = driver.findElement(By.cssSelector("div.sc-beqWaB.gRXpLa")).getText().trim();
+        String raw = driver.findElement(
+                JobScraperLocators.POSTED_DATE_DIV
+        ).getText().trim();
         if (!raw.startsWith("Posted on ")) return 0;
 
         String strDate = raw.replace("Posted on ", "");

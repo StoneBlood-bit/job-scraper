@@ -24,11 +24,17 @@ public class Job {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+    @Lob
     private String jobPageUrl;
+    @Lob
     private String positionName;
+    @Lob
     private String organizationUrl;
+    @Lob
     private String logoUrl;
+    @Lob
     private String organizationTitle;
+    @Lob
     private String laborFunction;
     private Long postedDateUnix;
     @Lob
