@@ -1,0 +1,27 @@
+databaseChangeLog:
+  - changeSet:
+      id: create-locations-table
+      author: brkalix
+      changes:
+        - createTable:
+            tableName: locations
+            columns:
+              - column:
+                  name: id
+                  type: bigint
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: name
+                  type: varchar(255)
+              - column:
+                  name: job_id
+                  type: bigint
+        - addForeignKeyConstraint:
+            baseTableName: locations
+            baseColumnNames: job_id
+            referencedTableName: jobs
+            referencedColumnNames: id
+            constraintName: fk_location_job
