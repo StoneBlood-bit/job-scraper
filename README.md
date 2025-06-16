@@ -36,9 +36,58 @@ Scrapes jobs by the specified job function.
 **Response:**
 `HTTP 200 OK
 Scraping completed. Total jobs saved: 42`
+---
 
-- `GET /jobs?page=0&size=10` – List paginated jobs
-- `GET /jobs/{id}` – Get job details by ID
+### 📋 `GET /api/jobs`
+
+Retrieves a paginated list of jobs as DTOs.
+
+**Query Parameters:**
+
+- `page` — page number (default: 0)
+- `size` — page size (default: 10)
+
+**Example request:**
+`GET /api/jobs?page=0&size=10`
+
+**Response:**
+
+```json
+{
+  "content": [
+    {
+      "id": 1,
+      "positionName": "Software Engineer",
+      "organizationTitle": "Techstars",
+      "organizationUrl": "https://techstars.com",
+      "jobPageUrl": "...",
+      ...
+    },
+    ...
+  ],
+  "pageable": { ... },
+  "totalPages": 5,
+  "totalElements": 50,
+  ...
+}
+```
+---
+
+### 📋 `GET /api/jobs/id`
+**Example request:**
+`Get api/jobs/1`
+**Response:**
+```json
+{
+      "id": 1,
+      "positionName": "Software Engineer",
+      "organizationTitle": "Techstars",
+      "organizationUrl": "https://techstars.com",
+      "jobPageUrl": "...",
+      ...
+    }
+```
+
 
 ## ⚙️ How It Works
 
